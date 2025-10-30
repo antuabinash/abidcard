@@ -74,11 +74,8 @@
         /* Button Colors */
         #addBtn { background-color: #007bff; color: white; }
         #completeBtn { background-color: #ffc107; color: #333; }
-        #shareBtn {
-            background-color: #28a745; /* Green */
-            color: white;
-            display: none; /* Hidden by default */
-        }
+        
+        /* MODIFIED: Removed Share Button, updated Edit */
         #downloadBtn {
             background-color: #007bff; /* Blue */
             color: white;
@@ -95,6 +92,15 @@
              color: white;
              margin-top: 0;
              margin-bottom: 10px;
+        }
+        
+        /* NEW: Clear Button Style */
+        #clearBtn {
+            background-color: #dc3545; /* Red */
+            color: white;
+            font-size: 14px;
+            padding: 10px;
+            margin-top: 20px; /* Space above */
         }
 
         /* --- Student List Styling --- */
@@ -165,9 +171,45 @@
             cursor: pointer;
             width: auto;
         }
-        /* Hidden canvas for processing the image */
-        #cameraCanvas {
+        #cameraCanvas { display: none; }
+
+        /* --- NEW: Confirmation Modal --- */
+        #confirmModal {
             display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 20px 30px;
+            border-radius: 8px;
+            text-align: center;
+            max-width: 300px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .modal-buttons button {
+            width: 48%;
+            margin: 0;
+        }
+        #confirmYesBtn {
+            background-color: #dc3545;
+            color: white;
+        }
+        #confirmNoBtn {
+            background-color: #6c757d;
+            color: white;
         }
 
     </style>
@@ -222,17 +264,23 @@
         
         <button id="addBtn">Add Student</button>
         <button id="completeBtn" disabled>Submit</button> 
-    </div>
-
-    <h3 id="previewTitle" style="display:none;">Preview:</h3>
-    <div id="studentList">
+        
+        <hr style="border: none; border-top: 1px solid #eee; margin: 25px 0;">
+        
+        <h3 style="margin-top: 10px;">Student Preview List</h3>
+        <div id="studentList">
+            <!-- Students will be added here by JS -->
         </div>
+        <!-- NEW: Clear All Data Button -->
+        <button id="clearBtn">Clear All Data</button>
+    </div>
 
     <div id="shareSection" style="display:none;">
         <h3>Export Data</h3>
-        <button id="shareBtn">Share Data</button>
+        <!-- MODIFIED: Removed Share Button -->
         <button id="downloadBtn">Download Data</button>
-        <button id="editBtn">Edit</button>
+        <!-- MODIFIED: Changed button text -->
+        <button id="editBtn">Back to Edit</button>
     </div>
 
     <!-- NEW: Camera Modal HTML -->
@@ -243,17 +291,26 @@
         <button id="captureBtn">Capture</button>
     </div>
 
+    <!-- NEW: Confirmation Modal HTML -->
+    <div id="confirmModal">
+        <div class="modal-content">
+            <p id="confirmText">Are you sure?</p>
+            <div class="modal-buttons">
+                <button id="confirmYesBtn">Yes</button>
+                <button id="confirmNoBtn">No</button>
+            </div>
+        </div>
+    </div>
+
 
     <script>
         // --- Odia data ---
         const odiaDigits = ['୦', '୧', '୨', '୩', '୪', '୫', '୬', '୭', '୮', '୯'];
-        const odiaMonths = ['ଜାନୁଆରୀ', 'ଫେବୃଆରୀ', 'ମାର୍ଚ୍ଚ', 'ଅପ୍ରେଲ', 'ମଇ', 'ଜୁନ୍', 'ଜୁଲାଇ', 'ଅଗଷ୍ଟ', 'ସେପ୍ଟେମ୍ବର', 'ଅକ୍ଟୋବର', 'ନଭେମ୍ବର', 'ଡିସେମ୍ବର'];
+        const odiaMonths = ['ଜାନୁଆରୀ', 'ଫେବୃଆରୀ', 'ମାର୍ଚ୍ଚ', 'ଅପ୍ରେଲ', 'ମଇ', 'ଜୁନ୍', 'ଜୁଲାଇ', 'ଅଗଷ୍ଟ', 'ସେପ୍ତେମ୍ବର', 'ଅକ୍ଟୋବର', 'ନଭେମ୍ବର', 'ଡିସେମ୍ବର'];
         
         let students = [];
         let capturedPhotoFile = null; 
         let cameraStream = null; 
-        
-        // --- NEW: IndexedDB Database variable ---
         let db;
 
         // --- Get All DOM Elements ---
@@ -268,13 +325,23 @@
         const photoInput = document.getElementById('photo');
         const photoPreview = document.getElementById('photoPreview');
         const shareSection = document.getElementById('shareSection');
-        const shareBtn = document.getElementById('shareBtn');
+        
+        // MODIFIED: Removed shareBtn
         const downloadBtn = document.getElementById('downloadBtn');
         const editBtn = document.getElementById('editBtn'); 
         const studentListDiv = document.getElementById('studentList');
         const previewTitle = document.getElementById('previewTitle');
 
-        // --- NEW: Camera Modal Elements ---
+        // NEW: Get Clear Button
+        const clearBtn = document.getElementById('clearBtn');
+        
+        // NEW: Get Modal Elements
+        const confirmModal = document.getElementById('confirmModal');
+        const confirmYesBtn = document.getElementById('confirmYesBtn');
+        const confirmNoBtn = document.getElementById('confirmNoBtn');
+        const confirmText = document.getElementById('confirmText');
+
+        // NEW: Camera Modal Elements
         const cameraModal = document.getElementById('cameraModal');
         const openCameraBtn = document.getElementById('openCameraBtn');
         const closeCameraBtn = document.getElementById('closeCameraBtn');
@@ -282,9 +349,10 @@
         const cameraCanvas = document.getElementById('cameraCanvas');
         const captureBtn = document.getElementById('captureBtn');
 
-        // --- MODIFIED: Show Share button if supported ---
+        // MODIFIED: Removed shareBtn logic
         if (navigator.share) {
-            shareBtn.style.display = 'block';
+            // We still check, but we just don't show the button
+            console.log("Sharing is supported");
         }
 
         // --- PREVENT ACCIDENTAL BACK BUTTON ---
@@ -297,7 +365,6 @@
         // --- NEW: Register Service Worker ---
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                // MODIFIED: Relative path
                 navigator.serviceWorker.register('sw.js')
                     .then(reg => console.log('Service Worker registered.', reg))
                     .catch(err => console.log('Service Worker registration failed:', err));
@@ -346,7 +413,6 @@
             
             let photoUrl;
             try {
-                // Create a local URL for the photo blob/file
                 photoUrl = URL.createObjectURL(student.photoFile);
             } catch (e) {
                 console.error("Could not create object URL for student photo:", e);
@@ -370,9 +436,9 @@
             students.forEach(student => {
                 renderStudent(student);
             });
-            if (students.length > 0) {
-                completeBtn.disabled = false;
-            }
+            // MODIFIED: This now controls the button state
+            completeBtn.disabled = students.length === 0;
+            clearBtn.style.display = students.length === 0 ? 'none' : 'block';
         }
 
         // --- Odia Date Conversion Function ---
@@ -481,7 +547,6 @@
                 newPhotoName: newFilename
             };
             
-            // --- NEW: Save to IndexedDB ---
             if (!db) {
                 alert("Database is not ready. Please wait a moment and try again.");
                 return;
@@ -492,10 +557,8 @@
 
             request.onsuccess = () => {
                 console.log('Student added to DB');
-                
-                // Add to local array and render
                 students.push(student);
-                renderStudent(student); // Just render the new one
+                renderStudentList(); // Re-render
                 
                 // Clear form
                 nameInput.value = '';
@@ -508,8 +571,6 @@
                 photoPreview.src = '';
                 photoPreview.style.display = 'none';
                 nameInput.focus();
-                
-                completeBtn.disabled = false;
             };
 
             request.onerror = (e) => {
@@ -529,10 +590,9 @@
             }
         }
         
-        // Listen to the file input for "Gallery" uploads
         photoInput.addEventListener('change', () => {
             if (photoInput.files.length > 0) {
-                capturedPhotoFile = null; // Clear camera photo if gallery is used
+                capturedPhotoFile = null; 
                 handlePhotoPreview(photoInput.files[0]);
             }
         });
@@ -540,28 +600,17 @@
         // --- 2b. DELETE STUDENT (MODIFIED for DB) ---
         studentListDiv.addEventListener('click', (e) => {
             if (e.target.classList.contains('deleteBtn')) {
-                // Get ID from button. Note: It's a number!
                 const studentId = Number(e.target.dataset.id);
                 
-                // --- NEW: Delete from IndexedDB ---
                 const transaction = db.transaction(['students'], 'readwrite');
                 const store = transaction.objectStore('students');
                 const request = store.delete(studentId);
 
                 request.onsuccess = () => {
                     console.log('Student deleted from DB');
-                    
-                    // Remove from local array
-                    students = students.filter(s => s.id !== studentId);
-                    
-                    // Remove from view
-                    e.target.closest('div[data-student-id]').remove();
-                    
-                    if (students.length === 0) {
-                        completeBtn.disabled = true;
-                    }
+                    students = students.filter(s => s.id !== studentId); 
+                    renderStudentList(); // Re-render the list
                 };
-
                 request.onerror = (e) => {
                     console.error('Error deleting student:', e.target.error);
                 };
@@ -573,9 +622,9 @@
             if (students.length === 0) return;
             entryForm.style.display = 'none';
             previewTitle.style.display = 'block';
-            studentListDiv.style.display = 'block';
+            studentListDiv.style.display = 'none'; // Hide list on stage 2
             shareSection.style.display = 'block';
-            studentListDiv.classList.add('step-3-preview');
+            studentListDiv.classList.add('step-3-preview'); // (This class no longer does anything)
         });
 
         // --- 3b. EDIT BUTTON ---
@@ -583,6 +632,7 @@
             shareSection.style.display = 'none';
             previewTitle.style.display = 'none';
             entryForm.style.display = 'block';
+            studentListDiv.style.display = 'block'; // Show list again
             studentListDiv.classList.remove('step-3-preview');
         });
 
@@ -612,31 +662,8 @@
             return { zipBlob, zipFileName };
         }
 
-        shareBtn.addEventListener('click', async () => {
-            if (students.length === 0) return;
-            shareBtn.textContent = 'Processing...';
-            shareBtn.disabled = true;
-
-            try {
-                const { zipBlob, zipFileName } = await createZipData();
-                const zipFile = new File([zipBlob], zipFileName, { type: 'application/zip' });
-                const shareData = {
-                    title: 'Student ID Data',
-                    text: 'Student CSV and photos for ID card generation.',
-                    files: [zipFile]
-                };
-                await navigator.share(shareData);
-            } catch (err) {
-                console.error('Error sharing zip file:', err);
-                if (err.name !== 'AbortError') {
-                    alert('Could not share file. Error: ' + err.message);
-                }
-            } finally {
-                shareBtn.textContent = 'Share Data';
-                shareBtn.disabled = false;
-            }
-        });
-
+        // MODIFIED: Removed shareBtn listener
+        
         downloadBtn.addEventListener('click', async () => {
             if (students.length === 0) return;
             downloadBtn.textContent = 'Processing...';
@@ -654,7 +681,6 @@
             }
         });
 
-
         // --- 5. Helper function to trigger download ---
         function downloadBlob(content, fileName, contentType) {
             const blob = new Blob([content], { type: contentType });
@@ -666,6 +692,37 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+        }
+
+        // --- 6. NEW: Clear All Data and Modal Logic ---
+        clearBtn.addEventListener('click', () => {
+            confirmText.textContent = 'Are you sure you want to delete all student data? This cannot be undone.';
+            confirmModal.style.display = 'flex';
+        });
+
+        confirmNoBtn.addEventListener('click', () => {
+            confirmModal.style.display = 'none';
+        });
+
+        confirmYesBtn.addEventListener('click', () => {
+            confirmModal.style.display = 'none';
+            clearAllData();
+        });
+
+        function clearAllData() {
+            if (!db) return;
+            const transaction = db.transaction(['students'], 'readwrite');
+            const store = transaction.objectStore('students');
+            const request = store.clear(); // Clears the whole store
+
+            request.onsuccess = () => {
+                console.log('Student data cleared from DB');
+                students = []; // Clear local array
+                renderStudentList(); // Re-render (will empty list and disable buttons)
+            };
+            request.onerror = (e) => {
+                console.error('Error clearing data:', e.target.error);
+            };
         }
 
     </script>
