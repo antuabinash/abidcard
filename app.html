@@ -6,6 +6,7 @@
     <title>ID Card Data Entry</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     
+    <!-- MODIFIED: Relative path -->
     <link rel="manifest" href="manifest.json">
 
     <style>
@@ -234,6 +235,7 @@
         <button id="editBtn">Edit</button>
     </div>
 
+    <!-- NEW: Camera Modal HTML -->
     <div id="cameraModal">
         <button id="closeCameraBtn">&times;</button>
         <video id="cameraVideo" playsinline autoplay></video>
@@ -295,7 +297,8 @@
         // --- NEW: Register Service Worker ---
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
+                // MODIFIED: Relative path
+                navigator.serviceWorker.register('sw.js')
                     .then(reg => console.log('Service Worker registered.', reg))
                     .catch(err => console.log('Service Worker registration failed:', err));
             });
@@ -306,15 +309,12 @@
 
         request.onupgradeneeded = (e) => {
             db = e.target.result;
-            // Create the 'students' object store (like a table)
-            // We use 'id' as the key
             db.createObjectStore('students', { keyPath: 'id' });
         };
 
         request.onsuccess = (e) => {
             db = e.target.result;
             console.log('Database opened successfully');
-            // Load existing data from the DB
             loadStudentsFromDB();
         };
 
@@ -332,7 +332,6 @@
             getAllRequest.onsuccess = () => {
                 students = getAllRequest.result;
                 console.log(`Loaded ${students.length} students from DB.`);
-                // Render the list on the page
                 renderStudentList();
             };
             getAllRequest.onerror = (e) => {
@@ -340,13 +339,19 @@
             };
         }
         
-        // --- NEW: Function to render the list (from `addBtn` logic) ---
+        // --- NEW: Function to render a single student ---
         function renderStudent(student) {
             const studentDiv = document.createElement('div');
             studentDiv.dataset.studentId = student.id;
             
-            // Create a local URL for the photo blob/file
-            const photoUrl = URL.createObjectURL(student.photoFile);
+            let photoUrl;
+            try {
+                // Create a local URL for the photo blob/file
+                photoUrl = URL.createObjectURL(student.photoFile);
+            } catch (e) {
+                console.error("Could not create object URL for student photo:", e);
+                photoUrl = 'https://placehold.co/40x40/eee/aaa?text=ERR'; // Fallback
+            }
 
             studentDiv.innerHTML = `
                 <img src="${photoUrl}" class="list-preview-img" alt="Photo">
@@ -365,7 +370,6 @@
             students.forEach(student => {
                 renderStudent(student);
             });
-            // Enable submit button if there are students
             if (students.length > 0) {
                 completeBtn.disabled = false;
             }
@@ -456,9 +460,6 @@
                 return;
             }
             
-            // We don't need FileReader for the preview anymore,
-            // but we'll use it for the list dataUrl (or just use createObjectURL)
-            
             const odiaDOB = convertToOdiaDate(dobVal);
             
             const firstName = nameVal.split(' ')[0] || 'student';
@@ -476,8 +477,7 @@
                 dobOdia: odiaDOB, 
                 roll: rollVal,
                 phone: phoneInput.value,
-                photoFile: originalPhoto, // Store the actual File/Blob object
-                // photoDataUrl: photoDataUrl, // We'll generate this on-the-fly
+                photoFile: originalPhoto, 
                 newPhotoName: newFilename
             };
             
