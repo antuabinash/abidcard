@@ -23,7 +23,6 @@
         h1 { color: #0056b3; }
         p { font-size: 1.1em; color: #333; }
         
-        /* MODIFIED: Only one button needed now */
         #installBtn {
             display: none; /* Hidden by default */
             padding: 15px 30px;
@@ -44,7 +43,6 @@
         <h1>Student Data App</h1>
         <p id="message">Install this app for offline use and permanent data saving.</p>
         
-        <!-- MODIFIED: Only the install button -->
         <button id="installBtn">Install App</button>
         
         <p id="loadingMsg">Loading...</p>
@@ -86,7 +84,7 @@
             
             if (outcome === 'accepted') {
                 console.log('User accepted the install prompt');
-                // GOAL 1: Auto-open the app after install
+                // Auto-open the app after install
                 window.location.href = 'app.html'; 
             } else {
                 console.log('User dismissed the install prompt');
@@ -101,7 +99,7 @@
                     .then(reg => console.log('Service Worker registered.', reg))
                     .catch(err => console.log('Service Worker registration failed:', err));
 
-                // GOAL 2: Handle auto-redirect
+                // Auto-redirect logic
                 // Give the 'beforeinstallprompt' event 1 second to fire
                 setTimeout(() => {
                     if (!installPromptFired && !window.matchMedia('(display-mode: standalone)').matches) {
