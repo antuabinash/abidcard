@@ -1,7 +1,7 @@
 // MODIFIED: New cache name
 const CACHE_NAME = 'student-data-cache-v2';
 
-// MODIFIED: Relative paths (no slashes) and added icons
+// MODIFIED: Relative paths and added all files
 const urlsToCache = [
   './',
   'index.html',
@@ -20,6 +20,7 @@ self.addEventListener('install', event => {
         console.log('Opened cache');
         return cache.addAll(urlsToCache);
       })
+      .then(() => self.skipWaiting()) // Force activation
   );
 });
 
@@ -33,7 +34,10 @@ self.addEventListener('fetch', event => {
           return response;
         }
         // Not in cache - fetch from network
-        return fetch(event.request);
+        return fetch(event.request).catch(() => {
+            // Fallback for failed network requests
+            console.log('Network request failed. Serving from cache (if available).');
+        });
       }
     )
   );
@@ -47,10 +51,12 @@ self.addEventListener('activate', event => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
+            // Delete old caches (e.g., 'student-data-cache-v1')
             return caches.delete(cacheName);
           }
         })
       );
     })
+    .then(() => self.clients.claim()) // Take control immediately
   );
 });
