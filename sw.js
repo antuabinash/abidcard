@@ -1,13 +1,15 @@
-const CACHE_NAME = 'student-data-cache-v1';
+// MODIFIED: New cache name
+const CACHE_NAME = 'student-data-cache-v2';
+
+// MODIFIED: Relative paths (no slashes) and added icons
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/app.html',
+  './',
+  'index.html',
+  'app.html',
+  'manifest.json',
+  'icon-192.png',
+  'icon-512.png',
   'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'
-  // Add any CSS or icon files here if you have them
-  // '/style.css',
-  // '/icon-192.png',
-  // '/icon-512.png'
 ];
 
 // Install the service worker and cache files
@@ -34,5 +36,21 @@ self.addEventListener('fetch', event => {
         return fetch(event.request);
       }
     )
+  );
+});
+
+// --- NEW: Clean up old caches ---
+self.addEventListener('activate', event => {
+  const cacheWhitelist = [CACHE_NAME];
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
   );
 });
