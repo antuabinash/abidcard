@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Install Student Data App</title>
+    <!-- MODIFIED: Relative path -->
     <link rel="manifest" href="manifest.json">
     <style>
         body {
@@ -21,17 +22,24 @@
         }
         h1 { color: #0056b3; }
         p { font-size: 1.1em; color: #333; }
-        #installBtn {
+        
+        .action-button {
             display: none; /* Hidden by default */
             padding: 15px 30px;
             font-size: 18px;
             font-weight: 600;
             color: white;
-            background-color: #28a745;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             margin-top: 20px;
+            width: 100%;
+        }
+        #installBtn {
+            background-color: #28a745; /* Green */
+        }
+        #openBtn {
+            background-color: #007bff; /* Blue */
         }
     </style>
 </head>
@@ -39,13 +47,17 @@
     <div class="container">
         <h1>Student Data App</h1>
         <p>Install this app on your device for offline use and to save your work permanently.</p>
-        <button id="installBtn">Install App</button>
-        <p id="loadingMsg">Loading app...</p>
+        
+        <button id="installBtn" class="action-button">Install App</button>
+        <button id="openBtn" class="action-button">Open App</button>
+        
+        <p id="loadingMsg">Loading...</p>
     </div>
 
     <script>
         let deferredPrompt;
         const installBtn = document.getElementById('installBtn');
+        const openBtn = document.getElementById('openBtn'); 
         const loadingMsg = document.getElementById('loadingMsg');
 
         // 1. Check if already running as an installed PWA
@@ -53,45 +65,47 @@
             // Already installed, go straight to the app
             window.location.href = 'app.html';
         } else {
-            // Not installed, hide loading message
+            // Not installed, we are in the browser
             loadingMsg.style.display = 'none';
+            // By default, show the "Open App" button
+            openBtn.style.display = 'block'; 
         }
 
         // 2. Listen for the browser's install prompt
         window.addEventListener('beforeinstallprompt', (e) => {
-            // Prevent the mini-infobar from appearing
             e.preventDefault();
-            // Stash the event so it can be triggered later.
             deferredPrompt = e;
-            // Show our custom install button
+            // Show our custom install button INSTEAD of the open button
             installBtn.style.display = 'block';
+            openBtn.style.display = 'none';
         });
 
         // 3. Handle the install button click
         installBtn.addEventListener('click', async () => {
             if (!deferredPrompt) {
-                return; // No prompt available
+                return; 
             }
-            // Show the browser's install prompt
             deferredPrompt.prompt();
-            // Wait for the user to respond
             const { outcome } = await deferredPrompt.userChoice;
             
             if (outcome === 'accepted') {
                 console.log('User accepted the install prompt');
-                // On some devices, this will open the app. On others, we
-                // can redirect them after they accept.
-                window.location.href = 'app.html';
             } else {
                 console.log('User dismissed the install prompt');
             }
             deferredPrompt = null;
         });
+        
+        // 4. Handle the Open App button click
+        openBtn.addEventListener('click', () => {
+            window.location.href = 'app.html';
+        });
 
-        // 4. Register the Service Worker for offline use
+        // 5. Register the Service Worker for offline use
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
+                // MODIFIED: Relative path
+                navigator.serviceWorker.register('sw.js')
                     .then(reg => console.log('Service Worker registered.', reg))
                     .catch(err => console.log('Service Worker registration failed:', err));
             });
