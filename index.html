@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Install Student Data App</title>
-    <!-- MODIFIED: Relative path -->
+    <!-- Relative path -->
     <link rel="manifest" href="manifest.json">
     <style>
         body {
@@ -23,33 +23,29 @@
         h1 { color: #0056b3; }
         p { font-size: 1.1em; color: #333; }
         
-        .action-button {
+        /* MODIFIED: Only one button needed now */
+        #installBtn {
             display: none; /* Hidden by default */
             padding: 15px 30px;
             font-size: 18px;
             font-weight: 600;
             color: white;
+            background-color: #28a745;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             margin-top: 20px;
             width: 100%;
         }
-        #installBtn {
-            background-color: #28a745; /* Green */
-        }
-        #openBtn {
-            background-color: #007bff; /* Blue */
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Student Data App</h1>
-        <p>Install this app on your device for offline use and to save your work permanently.</p>
+        <p id="message">Install this app for offline use and permanent data saving.</p>
         
-        <button id="installBtn" class="action-button">Install App</button>
-        <button id="openBtn" class="action-button">Open App</button>
+        <!-- MODIFIED: Only the install button -->
+        <button id="installBtn">Install App</button>
         
         <p id="loadingMsg">Loading...</p>
     </div>
@@ -57,27 +53,27 @@
     <script>
         let deferredPrompt;
         const installBtn = document.getElementById('installBtn');
-        const openBtn = document.getElementById('openBtn'); 
         const loadingMsg = document.getElementById('loadingMsg');
+        const message = document.getElementById('message');
+        let installPromptFired = false;
 
-        // 1. Check if already running as an installed PWA
+        // 1. Check if running as an installed PWA from home screen
         if (window.matchMedia('(display-mode: standalone)').matches) {
-            // Already installed, go straight to the app
+            // Yes, opened from home screen icon. Go straight to app.
             window.location.href = 'app.html';
         } else {
-            // Not installed, we are in the browser
+            // No, running in browser.
             loadingMsg.style.display = 'none';
-            // By default, show the "Open App" button
-            openBtn.style.display = 'block'; 
         }
 
         // 2. Listen for the browser's install prompt
         window.addEventListener('beforeinstallprompt', (e) => {
+            installPromptFired = true;
             e.preventDefault();
             deferredPrompt = e;
-            // Show our custom install button INSTEAD of the open button
+            // Show our custom install button
             installBtn.style.display = 'block';
-            openBtn.style.display = 'none';
+            message.textContent = 'Install this app on your device for the best experience.';
         });
 
         // 3. Handle the install button click
@@ -90,26 +86,35 @@
             
             if (outcome === 'accepted') {
                 console.log('User accepted the install prompt');
+                // GOAL 1: Auto-open the app after install
+                window.location.href = 'app.html'; 
             } else {
                 console.log('User dismissed the install prompt');
             }
             deferredPrompt = null;
         });
         
-        // 4. Handle the Open App button click
-        openBtn.addEventListener('click', () => {
-            window.location.href = 'app.html';
-        });
-
-        // 5. Register the Service Worker for offline use
+        // 4. Register Service Worker and check for auto-redirect
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                // MODIFIED: Relative path
                 navigator.serviceWorker.register('sw.js')
                     .then(reg => console.log('Service Worker registered.', reg))
                     .catch(err => console.log('Service Worker registration failed:', err));
+
+                // GOAL 2: Handle auto-redirect
+                // Give the 'beforeinstallprompt' event 1 second to fire
+                setTimeout(() => {
+                    if (!installPromptFired && !window.matchMedia('(display-mode: standalone)').matches) {
+                        // If prompt didn't fire, it means app is already installed.
+                        // Redirect from browser link to the app page.
+                        console.log('App already installed, redirecting to app.html...');
+                        message.textContent = 'App already installed. Opening...';
+                        window.location.href = 'app.html';
+                    }
+                }, 1000); // 1 second delay
             });
         }
     </script>
 </body>
 </html>
+
