@@ -271,8 +271,6 @@
         <button id="clearBtn">Clear All Data</button>
     </div>
     
-    <!-- MODIFIED: REMOVED the broken previewTitle h3 from here -->
-
     <div id="shareSection" style="display:none;">
         <h3>Export Data</h3>
         <button id="downloadBtn">Download Data</button>
@@ -325,7 +323,6 @@
         const downloadBtn = document.getElementById('downloadBtn');
         const editBtn = document.getElementById('editBtn'); 
         const studentListDiv = document.getElementById('studentList');
-        // MODIFIED: REMOVED previewTitle
         
         // NEW: Get Clear Button
         const clearBtn = document.getElementById('clearBtn');
@@ -442,6 +439,17 @@
             } catch (e) { console.error("Could not parse date:", dateString); return ''; }
         }
 
+        // --- NEW: Random Text Generator ---
+        function generateRandomText(length) {
+            let result = '';
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+            const charactersLength = characters.length;
+            for (let i = 0; i < length; i++) {
+                result += characters.charAt(Math.floor(Math.random() * charactersLength));
+            }
+            return result;
+        }
+
         // --- NEW: Start Camera Function ---
         async function startCamera() {
             try {
@@ -516,11 +524,10 @@
             
             const odiaDOB = convertToOdiaDate(dobVal);
             
-            const firstName = nameVal.split(' ')[0] || 'student';
-            const safeFirstName = firstName.replace(/[^a-zA-Z0-9]/g, '');
-            
+            // MODIFIED: Generate random text for filename
             const extension = photoName.split('.').pop().toLowerCase() || 'jpg';
-            const newFilename = `${safeFirstName}_${rollVal}.${extension}`;
+            const randomName = generateRandomText(10); // Using new helper function
+            const newFilename = `${randomName}.${extension}`;
             
             const studentId = Date.now();
             const student = {
@@ -609,14 +616,12 @@
         completeBtn.addEventListener('click', () => {
             if (students.length === 0) return;
             entryForm.style.display = 'none';
-            // MODIFIED: REMOVED previewTitle.style.display
             shareSection.style.display = 'block';
         });
 
         // --- 3b. EDIT BUTTON (MODIFIED) ---
         editBtn.addEventListener('click', () => {
             shareSection.style.display = 'none';
-            // MODIFIED: REMOVED previewTitle.style.display
             entryForm.style.display = 'block';
         });
 
@@ -627,9 +632,26 @@
             
             students.forEach(student => {
                 const photoPath = 'E:\\photo\\' + student.newPhotoName;
+
+                // NEW: Format the date as DD/MM/YYYY
+                let formattedDob = '';
+                if (student.dob) {
+                    try {
+                        const [year, month, day] = student.dob.split('-');
+                        formattedDob = `${day}/${month}/${year}`;
+                    } catch (e) {
+                        console.error('Could not parse date:', student.dob);
+                        formattedDob = student.dob; // Fallback to original
+                    }
+                }
+                
                 const row = [
-                    `"${student.name}"`, `"${student.class}"`, `"${student.dob}"`,
-                    `"${student.roll}"`, `"${student.phone}"`, `"${photoPath}"` 
+                    `"${student.name}"`,
+                    `"${student.class}"`,
+                    `"${formattedDob}"`, // MODIFIED: Use formatted date
+                    `"${student.roll}"`,
+                    `"${student.phone}"`,
+                    `"${photoPath}"` 
                 ];
                 csvContent += row.join(',') + '\n';
             });
@@ -710,5 +732,4 @@
     </script>
 </body>
 </html>
-
 
