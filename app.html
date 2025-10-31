@@ -75,7 +75,6 @@
         #addBtn { background-color: #007bff; color: white; }
         #completeBtn { background-color: #ffc107; color: #333; }
         
-        /* MODIFIED: Removed Share Button, updated Edit */
         #downloadBtn {
             background-color: #007bff; /* Blue */
             color: white;
@@ -86,7 +85,6 @@
             margin-top: 0; 
         }
         
-        /* NEW: Camera Button */
         #openCameraBtn {
              background-color: #17a2b8;
              color: white;
@@ -94,7 +92,6 @@
              margin-bottom: 10px;
         }
         
-        /* NEW: Clear Button Style */
         #clearBtn {
             background-color: #dc3545; /* Red */
             color: white;
@@ -123,7 +120,6 @@
             font-size: 12px; border-radius: 4px; margin-left: 10px;
             width: auto; margin-top: 0; flex-shrink: 0;
         }
-        #studentList.step-3-preview .deleteBtn { display: none; }
         
         /* Photo Preview in Form */
         #photoPreview {
@@ -274,12 +270,12 @@
         <!-- NEW: Clear All Data Button -->
         <button id="clearBtn">Clear All Data</button>
     </div>
+    
+    <!-- MODIFIED: REMOVED the broken previewTitle h3 from here -->
 
     <div id="shareSection" style="display:none;">
         <h3>Export Data</h3>
-        <!-- MODIFIED: Removed Share Button -->
         <button id="downloadBtn">Download Data</button>
-        <!-- MODIFIED: Changed button text -->
         <button id="editBtn">Back to Edit</button>
     </div>
 
@@ -306,7 +302,7 @@
     <script>
         // --- Odia data ---
         const odiaDigits = ['୦', '୧', '୨', '୩', '୪', '୫', '୬', '୭', '୮', '୯'];
-        const odiaMonths = ['ଜାନୁଆରୀ', 'ଫେବୃଆରୀ', 'ମାର୍ଚ୍ଚ', 'ଅପ୍ରେଲ', 'ମଇ', 'ଜୁନ୍', 'ଜୁଲାଇ', 'ଅଗଷ୍ଟ', 'ସେପ୍ତେମ୍ବର', 'ଅକ୍ଟୋବର', 'ନଭେମ୍ବର', 'ଡିସେମ୍ବର'];
+        const odiaMonths = ['ଜାନୁଆରୀ', 'ଫେବୃଆରୀ', 'ମାର୍ଚ୍ଚ', 'ଅପ୍ରେଲ', 'ମଇ', 'ଜୁନ୍', 'ଜୁଲାଇ', 'ଅଗଷ୍ଟ', 'ସେପ୍ଟେମ୍ବର', 'ଅକ୍ଟୋବର', 'ନଭେମ୍ବର', 'ଡିସେମ୍ବର'];
         
         let students = [];
         let capturedPhotoFile = null; 
@@ -326,12 +322,11 @@
         const photoPreview = document.getElementById('photoPreview');
         const shareSection = document.getElementById('shareSection');
         
-        // MODIFIED: Removed shareBtn
         const downloadBtn = document.getElementById('downloadBtn');
         const editBtn = document.getElementById('editBtn'); 
         const studentListDiv = document.getElementById('studentList');
-        const previewTitle = document.getElementById('previewTitle');
-
+        // MODIFIED: REMOVED previewTitle
+        
         // NEW: Get Clear Button
         const clearBtn = document.getElementById('clearBtn');
         
@@ -348,12 +343,6 @@
         const cameraVideo = document.getElementById('cameraVideo');
         const cameraCanvas = document.getElementById('cameraCanvas');
         const captureBtn = document.getElementById('captureBtn');
-
-        // MODIFIED: Removed shareBtn logic
-        if (navigator.share) {
-            // We still check, but we just don't show the button
-            console.log("Sharing is supported");
-        }
 
         // --- PREVENT ACCIDENTAL BACK BUTTON ---
         window.addEventListener('beforeunload', (e) => {
@@ -436,7 +425,6 @@
             students.forEach(student => {
                 renderStudent(student);
             });
-            // MODIFIED: This now controls the button state
             completeBtn.disabled = students.length === 0;
             clearBtn.style.display = students.length === 0 ? 'none' : 'block';
         }
@@ -617,23 +605,19 @@
             }
         });
 
-        // --- 3. COMPLETE ADDING ---
+        // --- 3. COMPLETE ADDING (MODIFIED) ---
         completeBtn.addEventListener('click', () => {
             if (students.length === 0) return;
             entryForm.style.display = 'none';
-            previewTitle.style.display = 'block';
-            studentListDiv.style.display = 'none'; // Hide list on stage 2
+            // MODIFIED: REMOVED previewTitle.style.display
             shareSection.style.display = 'block';
-            studentListDiv.classList.add('step-3-preview'); // (This class no longer does anything)
         });
 
-        // --- 3b. EDIT BUTTON ---
+        // --- 3b. EDIT BUTTON (MODIFIED) ---
         editBtn.addEventListener('click', () => {
             shareSection.style.display = 'none';
-            previewTitle.style.display = 'none';
+            // MODIFIED: REMOVED previewTitle.style.display
             entryForm.style.display = 'block';
-            studentListDiv.style.display = 'block'; // Show list again
-            studentListDiv.classList.remove('step-3-preview');
         });
 
         // --- 4. EXPORT FUNCTIONS ---
@@ -661,8 +645,6 @@
             
             return { zipBlob, zipFileName };
         }
-
-        // MODIFIED: Removed shareBtn listener
         
         downloadBtn.addEventListener('click', async () => {
             if (students.length === 0) return;
@@ -728,4 +710,5 @@
     </script>
 </body>
 </html>
+
 
