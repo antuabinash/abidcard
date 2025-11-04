@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ID Card Data Entry</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- NEW: Added Excel (SheetJS) library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <!-- Relative path -->
     <link rel="manifest" href="manifest.json">
@@ -625,39 +627,56 @@
             entryForm.style.display = 'block';
         });
 
-        // --- 4. EXPORT FUNCTIONS ---
+        // --- 4. EXPORT FUNCTIONS (MODIFIED for Excel) ---
         async function createZipData() {
-            const headers = ['name', 'class', 'dob', 'rollno', 'phone', 'photo'];
-            let csvContent = '\uFEFF' + headers.join(',') + '\n';
             
-            students.forEach(student => {
+            // 1. Convert student data to Excel format
+            const dataForExcel = students.map(student => {
                 const photoPath = 'E:\\photo\\' + student.newPhotoName;
 
-                // NEW: Format the date as DD/MM/YYYY
                 let formattedDob = '';
                 if (student.dob) {
                     try {
                         const [year, month, day] = student.dob.split('-');
                         formattedDob = `${day}/${month}/${year}`;
                     } catch (e) {
-                        console.error('Could not parse date:', student.dob);
-                        formattedDob = student.dob; // Fallback to original
+                        formattedDob = student.dob; // Fallback
                     }
                 }
                 
-                const row = [
-                    `"${student.name}"`,
-                    `"${student.class}"`,
-                    `"${formattedDob}"`, // MODIFIED: Use formatted date
-                    `"${student.roll}"`,
-                    `"${student.phone}"`,
-                    `"${photoPath}"` 
-                ];
-                csvContent += row.join(',') + '\n';
+                // Return object with the exact headers
+                return {
+                    name: student.name,
+                    class: student.class,
+                    dob: formattedDob,
+                    rollno: student.roll,
+                    phone: student.phone,
+                    photo: photoPath
+                };
             });
 
+            // 2. Create Worksheet and Workbook using xlsx.js
+            const worksheet = XLSX.utils.json_to_sheet(dataForExcel, {
+                header: ['name', 'class', 'dob', 'rollno', 'phone', 'photo']
+            });
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Students"); // Name the sheet "Students"
+
+            // 3. Generate Excel file as a buffer
+            const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+            
+            // 4. Convert buffer to a Blob
+            const excelBlob = new Blob([excelBuffer], { 
+                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            });
+
+            // 5. Create Zip and add files
             const zip = new JSZip();
-            zip.file('student_data.csv', csvContent); 
+            
+            // Add the new Excel file
+            zip.file('student_data.xlsx', excelBlob); 
+            
+            // Add all the photos
             students.forEach(student => {
                 zip.file(student.newPhotoName, student.photoFile);
             });
