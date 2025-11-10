@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ID Card Data Entry</title>
+    <!-- Add JSZip and SheetJS (for Excel) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <!-- NEW: Added Excel (SheetJS) library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <!-- Relative path -->
@@ -129,7 +129,7 @@
             object-fit: cover; border-radius: 4px; border: 1px solid #ccc;
         }
         
-        /* --- NEW: Camera Modal Styling --- */
+        /* --- Camera Modal Styling --- */
         #cameraModal {
             display: none;
             position: fixed;
@@ -171,7 +171,7 @@
         }
         #cameraCanvas { display: none; }
 
-        /* --- NEW: Confirmation Modal --- */
+        /* --- Confirmation Modal --- */
         #confirmModal {
             display: none;
             position: fixed;
@@ -251,6 +251,23 @@
             <label for="phone">Phone No:</label>
             <input type="text" id="phone" placeholder="ଫୋନ୍ ନମ୍ବର">
         </div>
+        
+        <!-- NEW: Blood Group Dropdown -->
+        <div>
+            <label for="bloodGroup">Blood Group:</label>
+            <select id="bloodGroup">
+                <option value="">Select Blood Group (Optional)</option>
+                <option value="A+">A+</option>
+                <option value="A-">A-</option>
+                <option value="B+">B+</option>
+                <option value="B-">B-</option>
+                <option value="AB+">AB+</option>
+                <option value="AB-">AB-</option>
+                <option value="O+">O+</option>
+                <option value="O-">O-</option>
+            </select>
+        </div>
+        
         <div>
             <label>Student Photo:</label>
             <button id="openCameraBtn">Take a Picture</button>
@@ -261,7 +278,6 @@
         </div>
         
         <button id="addBtn">Add Student</button>
-        <button id="completeBtn" disabled>Submit</button> 
         
         <hr style="border: none; border-top: 1px solid #eee; margin: 25px 0;">
         
@@ -269,8 +285,11 @@
         <div id="studentList">
             <!-- Students will be added here by JS -->
         </div>
-        <!-- NEW: Clear All Data Button -->
+        
         <button id="clearBtn">Clear All Data</button>
+        
+        <!-- This is the moved Submit button -->
+        <button id="completeBtn" disabled>Submit</button> 
     </div>
     
     <div id="shareSection" style="display:none;">
@@ -279,7 +298,7 @@
         <button id="editBtn">Back to Edit</button>
     </div>
 
-    <!-- NEW: Camera Modal HTML -->
+    <!-- Camera Modal HTML -->
     <div id="cameraModal">
         <button id="closeCameraBtn">&times;</button>
         <video id="cameraVideo" playsinline autoplay></video>
@@ -287,7 +306,7 @@
         <button id="captureBtn">Capture</button>
     </div>
 
-    <!-- NEW: Confirmation Modal HTML -->
+    <!-- Confirmation Modal HTML -->
     <div id="confirmModal">
         <div class="modal-content">
             <p id="confirmText">Are you sure?</p>
@@ -307,7 +326,7 @@
         let students = [];
         let capturedPhotoFile = null; 
         let cameraStream = null; 
-        let db;
+        let db; // Our IndexedDB database
 
         // --- Get All DOM Elements ---
         const entryForm = document.getElementById('entryForm');
@@ -318,6 +337,7 @@
         const rollInput = document.getElementById('roll');
         const dobInput = document.getElementById('dob');
         const phoneInput = document.getElementById('phone');
+        const bloodGroupSelect = document.getElementById('bloodGroup'); // NEW
         const photoInput = document.getElementById('photo');
         const photoPreview = document.getElementById('photoPreview');
         const shareSection = document.getElementById('shareSection');
@@ -326,16 +346,13 @@
         const editBtn = document.getElementById('editBtn'); 
         const studentListDiv = document.getElementById('studentList');
         
-        // NEW: Get Clear Button
         const clearBtn = document.getElementById('clearBtn');
         
-        // NEW: Get Modal Elements
         const confirmModal = document.getElementById('confirmModal');
         const confirmYesBtn = document.getElementById('confirmYesBtn');
         const confirmNoBtn = document.getElementById('confirmNoBtn');
         const confirmText = document.getElementById('confirmText');
 
-        // NEW: Camera Modal Elements
         const cameraModal = document.getElementById('cameraModal');
         const openCameraBtn = document.getElementById('openCameraBtn');
         const closeCameraBtn = document.getElementById('closeCameraBtn');
@@ -350,7 +367,7 @@
             }
         });
 
-        // --- NEW: Register Service Worker ---
+        // --- Register Service Worker ---
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
@@ -359,7 +376,7 @@
             });
         }
         
-        // --- NEW: IndexedDB Setup ---
+        // --- IndexedDB Setup ---
         const request = indexedDB.open('studentDB', 1);
 
         request.onupgradeneeded = (e) => {
@@ -377,7 +394,7 @@
             console.error('Error opening database', e.target.error);
         };
         
-        // --- NEW: Function to load all students from DB ---
+        // --- Function to load all students from DB ---
         function loadStudentsFromDB() {
             if (!db) return;
             const transaction = db.transaction(['students'], 'readonly');
@@ -394,36 +411,41 @@
             };
         }
         
-        // --- NEW: Function to render a single student ---
+        // --- Function to render a single student ---
         function renderStudent(student) {
             const studentDiv = document.createElement('div');
             studentDiv.dataset.studentId = student.id;
             
             let photoUrl;
             try {
+                // Create a local URL for the photo blob/file
                 photoUrl = URL.createObjectURL(student.photoFile);
             } catch (e) {
                 console.error("Could not create object URL for student photo:", e);
                 photoUrl = 'https://placehold.co/40x40/eee/aaa?text=ERR'; // Fallback
             }
 
+            // NEW: Conditionally add blood group to the preview
+            const bloodGroupText = student.bloodGroup ? ` | Blood: ${student.bloodGroup}` : '';
+
             studentDiv.innerHTML = `
                 <img src="${photoUrl}" class="list-preview-img" alt="Photo">
                 <div class="student-info">
                     <span class="student-main-details"><strong>${student.name}</strong> (Class: ${student.class}, Roll: ${student.roll})</span>
-                    <span class="student-sub-details">DOB: ${student.dobOdia || 'N/A'}</span>
+                    <span class="student-sub-details">DOB: ${student.dobOdia || 'N/A'}${bloodGroupText}</span>
                 </div>
                 <button class="deleteBtn" data-id="${student.id}">Delete</button>
             `;
             studentListDiv.appendChild(studentDiv);
         }
         
-        // --- NEW: Function to render the whole list ---
+        // --- Function to render the whole list ---
         function renderStudentList() {
             studentListDiv.innerHTML = ''; // Clear existing list
             students.forEach(student => {
                 renderStudent(student);
             });
+            // Enable/Disable buttons based on student count
             completeBtn.disabled = students.length === 0;
             clearBtn.style.display = students.length === 0 ? 'none' : 'block';
         }
@@ -441,7 +463,7 @@
             } catch (e) { console.error("Could not parse date:", dateString); return ''; }
         }
 
-        // --- NEW: Random Text Generator ---
+        // --- Random Text Generator ---
         function generateRandomText(length) {
             let result = '';
             const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
@@ -452,63 +474,40 @@
             return result;
         }
 
-        // --- NEW: Start Camera Function ---
+        // --- Camera Functions (Unchanged) ---
         async function startCamera() {
             try {
-                const constraints = { 
-                    video: { facingMode: 'environment' }, // Back camera
-                    audio: false 
-                };
+                const constraints = { video: { facingMode: 'environment' }, audio: false };
                 cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
                 cameraVideo.srcObject = cameraStream;
                 cameraModal.style.display = 'flex';
-            } catch (err) {
-                console.error("Error opening camera:", err);
-                alert('Could not open camera. Please check permissions.');
-            }
+            } catch (err) { console.error("Error opening camera:", err); alert('Could not open camera.'); }
         }
-
-        // --- NEW: Stop Camera Function ---
         function stopCamera() {
-            if (cameraStream) {
-                cameraStream.getTracks().forEach(track => track.stop());
-                cameraStream = null;
-            }
+            if (cameraStream) { cameraStream.getTracks().forEach(track => track.stop()); cameraStream = null; }
             cameraModal.style.display = 'none';
         }
-
-        // --- NEW: Open/Close Camera Event Listeners ---
-        openCameraBtn.addEventListener('click', (e) => {
-            e.preventDefault(); 
-            startCamera();
-        });
-        
+        openCameraBtn.addEventListener('click', (e) => { e.preventDefault(); startCamera(); });
         closeCameraBtn.addEventListener('click', stopCamera);
-
-        // --- NEW: Capture Photo Logic ---
         captureBtn.addEventListener('click', () => {
             cameraCanvas.width = cameraVideo.videoWidth;
             cameraCanvas.height = cameraVideo.videoHeight;
-            const context = cameraCanvas.getContext('2d');
-            context.drawImage(cameraVideo, 0, 0, cameraCanvas.width, cameraCanvas.height);
-            
+            cameraCanvas.getContext('2d').drawImage(cameraVideo, 0, 0, cameraCanvas.width, cameraCanvas.height);
             cameraCanvas.toBlob((blob) => {
-                capturedPhotoFile = new File([blob], 'camera_capture.jpg', {
-                    type: 'image/jpeg',
-                    lastModified: Date.now()
-                });
+                capturedPhotoFile = new File([blob], 'camera_capture.jpg', { type: 'image/jpeg' });
                 handlePhotoPreview(capturedPhotoFile);
                 stopCamera();
             }, 'image/jpeg', 0.9); 
         });
 
 
-        // --- 2. ADD STUDENT (MODIFIED for DB) ---
+        // --- 2. ADD STUDENT (Save to IndexedDB) ---
         addBtn.addEventListener('click', () => {
             const classVal = classSelect.value.trim();
             const rollVal = rollInput.value.trim();
             const nameVal = nameInput.value.trim();
             const dobVal = dobInput.value;
+            const bloodGroupVal = bloodGroupSelect.value.trim(); // NEW
 
             const photoFromCamera = capturedPhotoFile;
             const photoFromGallery = photoInput.files[0];
@@ -526,7 +525,7 @@
             
             const odiaDOB = convertToOdiaDate(dobVal);
             
-            // MODIFIED: Generate random text for filename
+            // Generate random text for filename
             const extension = photoName.split('.').pop().toLowerCase() || 'jpg';
             const randomName = generateRandomText(10); // Using new helper function
             const newFilename = `${randomName}.${extension}`;
@@ -538,9 +537,10 @@
                 class: classVal,
                 dob: dobVal,
                 dobOdia: odiaDOB, 
+                bloodGroup: bloodGroupVal, // NEW
                 roll: rollVal,
                 phone: phoneInput.value,
-                photoFile: originalPhoto, 
+                photoFile: originalPhoto, // Store the actual File/Blob object
                 newPhotoName: newFilename
             };
             
@@ -548,12 +548,14 @@
                 alert("Database is not ready. Please wait a moment and try again.");
                 return;
             }
+            // --- Save to IndexedDB ---
             const transaction = db.transaction(['students'], 'readwrite');
             const store = transaction.objectStore('students');
             const request = store.add(student);
 
             request.onsuccess = () => {
                 console.log('Student added to DB');
+                
                 students.push(student);
                 renderStudentList(); // Re-render
                 
@@ -563,6 +565,7 @@
                 rollInput.value = '';
                 dobInput.value = '';
                 phoneInput.value = '';
+                bloodGroupSelect.value = ''; // NEW
                 photoInput.value = ''; 
                 capturedPhotoFile = null; 
                 photoPreview.src = '';
@@ -594,9 +597,10 @@
             }
         });
 
-        // --- 2b. DELETE STUDENT (MODIFIED for DB) ---
+        // --- 2b. DELETE STUDENT (from IndexedDB) ---
         studentListDiv.addEventListener('click', (e) => {
             if (e.target.classList.contains('deleteBtn')) {
+                // Get ID from button. Note: It's a number!
                 const studentId = Number(e.target.dataset.id);
                 
                 const transaction = db.transaction(['students'], 'readwrite');
@@ -605,6 +609,7 @@
 
                 request.onsuccess = () => {
                     console.log('Student deleted from DB');
+                    // Remove from local array
                     students = students.filter(s => s.id !== studentId); 
                     renderStudentList(); // Re-render the list
                 };
@@ -614,33 +619,35 @@
             }
         });
 
-        // --- 3. COMPLETE ADDING (MODIFIED) ---
+        // --- 3. COMPLETE ADDING (Submit Button) ---
         completeBtn.addEventListener('click', () => {
             if (students.length === 0) return;
             entryForm.style.display = 'none';
             shareSection.style.display = 'block';
         });
 
-        // --- 3b. EDIT BUTTON (MODIFIED) ---
+        // --- 3b. EDIT BUTTON (Back to Edit) ---
         editBtn.addEventListener('click', () => {
             shareSection.style.display = 'none';
             entryForm.style.display = 'block';
         });
 
-        // --- 4. EXPORT FUNCTIONS (MODIFIED for Excel) ---
+        // --- 4. EXPORT FUNCTIONS (Create Excel) ---
         async function createZipData() {
             
             // 1. Convert student data to Excel format
             const dataForExcel = students.map(student => {
                 const photoPath = 'E:\\photo\\' + student.newPhotoName;
 
+                // Format the date as DD/MM/YYYY
                 let formattedDob = '';
                 if (student.dob) {
                     try {
                         const [year, month, day] = student.dob.split('-');
                         formattedDob = `${day}/${month}/${year}`;
                     } catch (e) {
-                        formattedDob = student.dob; // Fallback
+                        console.error('Could not parse date:', student.dob);
+                        formattedDob = student.dob; // Fallback to original
                     }
                 }
                 
@@ -649,6 +656,7 @@
                     name: student.name,
                     class: student.class,
                     dob: formattedDob,
+                    bloodGroup: student.bloodGroup || '', // NEW
                     rollno: student.roll,
                     phone: student.phone,
                     photo: photoPath
@@ -656,8 +664,9 @@
             });
 
             // 2. Create Worksheet and Workbook using xlsx.js
+            // NEW: Added 'bloodGroup' to header
             const worksheet = XLSX.utils.json_to_sheet(dataForExcel, {
-                header: ['name', 'class', 'dob', 'rollno', 'phone', 'photo']
+                header: ['name', 'class', 'dob', 'bloodGroup', 'rollno', 'phone', 'photo']
             });
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Students"); // Name the sheet "Students"
@@ -717,7 +726,7 @@
             document.body.removeChild(link);
         }
 
-        // --- 6. NEW: Clear All Data and Modal Logic ---
+        // --- 6. Clear All Data and Modal Logic ---
         clearBtn.addEventListener('click', () => {
             confirmText.textContent = 'Are you sure you want to delete all student data? This cannot be undone.';
             confirmModal.style.display = 'flex';
@@ -751,4 +760,3 @@
     </script>
 </body>
 </html>
-
